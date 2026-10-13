@@ -1,0 +1,6 @@
+import fs from 'node:fs';import path from 'node:path';
+const base='/pulpito-digital-app/';const dir='dist';
+function list(d){return fs.readdirSync(d,{withFileTypes:true}).flatMap(x=>x.isDirectory()?list(path.join(d,x.name)):[path.join(d,x.name)]);}
+const urls=list(dir).filter(f=>!f.endsWith('/sw.js')).map(f=>base+f.slice(dir.length+1).replaceAll(path.sep,'/'));
+const sw=`const CACHE='pulpito-app-0.8.2';const BASE=${JSON.stringify(base)};const ASSETS=${JSON.stringify(urls)};self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('pulpito-app-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==self.location.origin||!u.pathname.startsWith(BASE))return;e.respondWith(caches.match(r).then(cached=>cached||fetch(r).then(response=>{if(response.ok){const clone=response.clone();caches.open(CACHE).then(c=>c.put(r,clone))}return response}).catch(()=>r.mode==='navigate'?caches.match(BASE+'index.html'):Response.error())))});`;
+fs.writeFileSync(path.join(dir,'sw.js'),sw);console.log('Offline assets:',urls.length);
